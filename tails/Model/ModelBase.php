@@ -86,27 +86,40 @@ abstract class ModelBase {
         }
         else
         {
-            $sqlSetValues = " ";
-            $dataValues["id"] = $this->id;
+            $dataPrepared = $this->buildSqlPrepareValues($this->newData);
 
-            foreach($this->newData as $attribute => $value)
-            {
-                $sqlSetValues           .= " {$attribute}=:{$attribute},";
-                $dataValues[$attribute]  = $value;
-            }
+            $dataPrepared["preparedKeysAndValues"]["id"] = $this->id;
 
-            $sqlSetValues = substr($sqlSetValues, 0, -1);
-
-            $sql = "UPDATE {$this->TABLE} SET {$sqlSetValues} WHERE id=:id";
+            $sql = "UPDATE {$this->TABLE} SET {$dataPrepared['preparedValues']} WHERE id=:id";
 
             try
             {
-                self::$conn->prepare($sql)->execute($dataValues);
+                self::$conn->prepare($sql)->execute($dataPrepared['preparedKeysAndValues']);
             }
             catch (\Exception $e)
             {
                 echo $e->getMessage();
             }
         }
+    }
+
+    public function buildSqlPrepareValues(array $newData = []): array
+    {
+        $execResult = [];
+
+        $sqlSetValues = " ";
+
+        foreach($newData as $attribute => $value)
+        {
+            $sqlSetValues           .= " {$attribute}=:{$attribute},";
+            $dataValues[$attribute]  = $value;
+        }
+
+        $sqlSetValues = substr($sqlSetValues, 0, -1);
+
+        $execResult["preparedValues"] = $sqlSetValues;
+        $execResult["preparedKeysAndValues"] = $dataValues;
+
+        return $execResult;
     }
 }
