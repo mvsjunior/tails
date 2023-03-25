@@ -12,6 +12,10 @@ abstract class ModelBase {
     protected array $newData  = [];
     protected $fillable;
 
+    const CONDITION_KEY = 0;
+    const CONDITION_OPERATOR = 1;
+    const CONDITION_VALUE = 2;
+
     public function __construct() 
     {
         self::setConnection();
@@ -55,8 +59,9 @@ abstract class ModelBase {
         {
             foreach($conditions as $condition)
             {
-                $where .= " {$condition[0]} {$condition[1]} :{$condition[0]} " . (isset($condition[3]) ? $condition[3] : "") . " ";
-                $dataQuery += [$condition[0] => $condition[2]];
+                $where .= " {$condition[self::CONDITION_KEY]} {$condition[self::CONDITION_OPERATOR]} :{$condition[self::CONDITION_KEY]} " . (isset($condition[3]) ? $condition[3] : "") . " ";
+
+                $dataQuery[ $condition[self::CONDITION_KEY] ] = $condition[self::CONDITION_VALUE];
             }
 
             $stmt = $conn->prepare("SELECT * FROM {$this->TABLE} {$where}");
