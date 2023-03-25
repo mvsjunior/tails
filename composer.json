@@ -1,0 +1,15 @@
+{
+    "name": "volg-php/tails",
+    "description": "Simples ORM PHP",
+    "autoload": {
+        "psr-4": {
+            "VolgPhp\\Tails\\": "tails/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Mauro"
+        }
+    ],
+    "require": {}
+}
