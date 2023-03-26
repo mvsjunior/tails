@@ -8,13 +8,13 @@ abstract class RepositoryBase {
 
     static $conn;
     protected $TABLE;
-    protected $className = __CLASS__;
+    protected $modelClass;
     protected array $newData  = [];
     protected $fillable;
 
-    const CONDITION_KEY = 0;
+    const CONDITION_KEY      = 0;
     const CONDITION_OPERATOR = 1;
-    const CONDITION_VALUE = 2;
+    const CONDITION_VALUE    = 2;
 
     public function __construct() 
     {
@@ -26,22 +26,13 @@ abstract class RepositoryBase {
         self::$conn = Connection::open($connectionName);
     }
 
-    public function __set($key, $value)
-    {
-        for($i = 0; $i < count($this->fillable); $i++)
-        {
-            if($key == $this->fillable[$i])
-            {
-                $this->{$key}        = $value;
-                $this->newData[$key] = $value;
-            }
-        }
-    }
-
-    public function __get($key)
-    {
-        return $this->{$key};
-    }
+    /** *****************************************************************
+     *                          READ
+     *  -----------------------------------------------------------------
+     *  - Métodos para consulta dos dados na tabela
+     *    - getAll()    : array 
+     *    - find(<id>)  : modelObj
+    */
 
     public function getAll($conditions = [])
     {
@@ -59,7 +50,9 @@ abstract class RepositoryBase {
         {
             foreach($conditions as $condition)
             {
-                $where .= " {$condition[self::CONDITION_KEY]} {$condition[self::CONDITION_OPERATOR]} :{$condition[self::CONDITION_KEY]} " . (isset($condition[3]) ? $condition[3] : "") . " ";
+                $where .= " {$condition[self::CONDITION_KEY]} {$condition[self::CONDITION_OPERATOR]} :{$condition[self::CONDITION_KEY]} " 
+                            . ( isset($condition[3]) ? $condition[3] : "" ) 
+                            . " ";
 
                 $dataQuery[ $condition[self::CONDITION_KEY] ] = $condition[self::CONDITION_VALUE];
             }
@@ -68,7 +61,7 @@ abstract class RepositoryBase {
             $stmt->execute($dataQuery);
         }
 
-        return $stmt->fetchAll(\PDO::FETCH_CLASS, $this->className);
+        return $stmt->fetchAll(\PDO::FETCH_CLASS, $this->modelClass);
     }
 
     public function find($id)
@@ -78,12 +71,19 @@ abstract class RepositoryBase {
         $stmt = $conn->prepare("SELECT * FROM {$this->TABLE} WHERE id=:id");
         $stmt->execute(["id" => $id]);
 
-        return $stmt->fetchObject($this->className);
+        return $stmt->fetchObject($this->modelClass);
     }
 
-    public function saveChanges()
+
+    /** *****************************************************************
+     *                          SAVE
+     *  -----------------------------------------------------------------
+     *  - Métodos para salvar os registros na tabela
+     *    - save(<array<model>>): void
+    */
+    public function save(array $models = [])
     {
-        $hasNewData = empty($this->newData);
+        $hasNewData = empty($model) === false;
 
         if($hasNewData)
         {
@@ -91,24 +91,102 @@ abstract class RepositoryBase {
         }
         else
         {
-            $dataPrepared = $this->buildSqlPrepareValues($this->newData);
-
-            $dataPrepared["preparedKeysAndValues"]["id"] = $this->id;
-
-            $sql = "UPDATE {$this->TABLE} SET {$dataPrepared['preparedValues']} WHERE id=:id";
-
-            try
+            foreach($models as $model)
             {
-                self::$conn->prepare($sql)->execute($dataPrepared['preparedKeysAndValues']);
-            }
-            catch (\Exception $e)
+                try
+                {
+                    $this->executeSave($model);
+                }
+                catch (\Exception $e)
+                {
+                    echo $e->getMessage();
+                }
+            }    
+        }
+    }
+    
+    public function executeSave($model)
+    {
+        $modelArray  = get_object_vars($model);
+
+        $dataPrepared = $this->buildInsertPrepareValues($modelArray);
+
+        $sql = "INSERT INTO {$this->TABLE}  {$dataPrepared['preparedValues']}";
+
+        self::$conn->prepare($sql)->execute($dataPrepared['preparedKeysAndValues']);
+    }
+    
+    public function buildInsertPrepareValues(array $newData = []): array
+    {
+        $execResult = [];
+
+        $setColumn = " ";
+        $setValues = " ";
+
+        foreach($newData as $attribute => $value)
+        {
+            $setColumn .= " {$attribute},";
+            $setValues .= " :{$attribute},";
+
+            $dataValues[$attribute]  = $value;
+        }
+
+        $setColumn = substr($setColumn, 0, -1);
+        $setValues = substr($setValues, 0, -1);
+
+        $sqlStmt   = "({$setColumn}) VALUES ({$setValues})";
+
+        $execResult["preparedValues"]        = $sqlStmt;
+        $execResult["preparedKeysAndValues"] = $dataValues;
+
+        return $execResult;
+    }
+
+    /** *****************************************************************
+     *                          UPDATE
+     *  -----------------------------------------------------------------
+     *  - Métodos para atualizar os registros na tabela
+     *    - update(<array<model>>)    : array 
+    */
+    public function update(array $models = [])
+    {
+        $hasNewData = empty($model) === false;
+
+        if($hasNewData)
+        {
+            return;
+        }
+        else
+        {
+            foreach($models as $model)
             {
-                echo $e->getMessage();
-            }
+                try
+                {
+                    $this->executeUpdate($model);
+                }
+                catch (\Exception $e)
+                {
+                    echo $e->getMessage();
+                }
+            }    
         }
     }
 
-    public function buildSqlPrepareValues(array $newData = []): array
+    public function executeUpdate($model):void
+    {
+        $modelArray  = get_object_vars($model);
+
+        $dataPrepared = $this->buildUpdatePrepareValues($modelArray);
+
+        $dataPrepared["preparedKeysAndValues"]["id"] = $model->id;
+
+        $sql = "UPDATE {$this->TABLE} SET {$dataPrepared['preparedValues']} WHERE id=:id";
+
+        self::$conn->prepare($sql)->execute($dataPrepared['preparedKeysAndValues']);
+    }
+
+
+    public function buildUpdatePrepareValues(array $newData = []): array
     {
         $execResult = [];
 
@@ -126,5 +204,18 @@ abstract class RepositoryBase {
         $execResult["preparedKeysAndValues"] = $dataValues;
 
         return $execResult;
+    }
+
+   /** *****************************************************************
+    *                          DELETE
+    *  -----------------------------------------------------------------
+    *
+   */
+    public function delete($id = null)
+    {
+        $conn = self::$conn;
+
+        $stmt = $conn->prepare("DELETE FROM {$this->TABLE} WHERE id=?");
+        $stmt->execute([$id]);
     }
 }
