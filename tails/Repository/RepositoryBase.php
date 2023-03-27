@@ -105,7 +105,7 @@ abstract class RepositoryBase {
         }
     }
     
-    public function executeSave($model)
+    protected function executeSave($model)
     {
         $modelArray  = get_object_vars($model);
 
@@ -116,7 +116,7 @@ abstract class RepositoryBase {
         self::$conn->prepare($sql)->execute($dataPrepared['preparedKeysAndValues']);
     }
     
-    public function buildInsertPrepareValues(array $newData = []): array
+    protected function buildInsertPrepareValues(array $newData = []): array
     {
         $execResult = [];
 
@@ -172,7 +172,7 @@ abstract class RepositoryBase {
         }
     }
 
-    public function executeUpdate($model):void
+    protected function executeUpdate($model):void
     {
         $modelArray  = get_object_vars($model);
 
@@ -186,7 +186,7 @@ abstract class RepositoryBase {
     }
 
 
-    public function buildUpdatePrepareValues(array $newData = []): array
+    protected function buildUpdatePrepareValues(array $newData = []): array
     {
         $execResult = [];
 
