@@ -7,7 +7,7 @@ use VolgPhp\Tails\Connection;
 abstract class RepositoryBase {
 
     static $conn;
-    protected $TABLE;
+    protected $table;
     protected $modelClass;
     protected array $newData  = [];
     protected $fillable;
@@ -48,7 +48,7 @@ abstract class RepositoryBase {
 
         if(empty($conditions))
         {
-            $stmt = $conn->query("SELECT * FROM {$this->TABLE}");
+            $stmt = $conn->query("SELECT * FROM {$this->table}");
         }
         else
         {
@@ -61,7 +61,7 @@ abstract class RepositoryBase {
                 $dataQuery[ $condition[self::CONDITION_KEY] ] = $condition[self::CONDITION_VALUE];
             }
 
-            $stmt = $conn->prepare("SELECT * FROM {$this->TABLE} {$where}");
+            $stmt = $conn->prepare("SELECT * FROM {$this->table} {$where}");
             $stmt->execute($dataQuery);
         }
 
@@ -86,7 +86,7 @@ abstract class RepositoryBase {
     {
         $conn = self::$conn;
 
-        $stmt = $conn->prepare("SELECT * FROM {$this->TABLE} WHERE id=:id");
+        $stmt = $conn->prepare("SELECT * FROM {$this->table} WHERE id=:id");
         $stmt->execute(["id" => $id]);
 
         return $stmt->fetchObject($this->modelClass);
@@ -108,7 +108,7 @@ abstract class RepositoryBase {
 
         echo $this->query;
         var_dump($this->queryData);
-        $stmt = $conn->prepare("SELECT * FROM {$this->TABLE} {$this->query}");
+        $stmt = $conn->prepare("SELECT * FROM {$this->table} {$this->query}");
 
         $stmt->execute($this->queryData);
 
@@ -161,7 +161,7 @@ abstract class RepositoryBase {
 
         $dataPrepared = $this->buildInsertPrepareValues($modelArray);
 
-        $sql = "INSERT INTO {$this->TABLE}  {$dataPrepared['preparedValues']}";
+        $sql = "INSERT INTO {$this->table}  {$dataPrepared['preparedValues']}";
 
         self::$conn->prepare($sql)->execute($dataPrepared['preparedKeysAndValues']);
     }
@@ -230,7 +230,7 @@ abstract class RepositoryBase {
 
         $dataPrepared["preparedKeysAndValues"]["id"] = $model->id;
 
-        $sql = "UPDATE {$this->TABLE} SET {$dataPrepared['preparedValues']} WHERE id=:id";
+        $sql = "UPDATE {$this->table} SET {$dataPrepared['preparedValues']} WHERE id=:id";
 
         self::$conn->prepare($sql)->execute($dataPrepared['preparedKeysAndValues']);
     }
@@ -265,7 +265,7 @@ abstract class RepositoryBase {
     {
         $conn = self::$conn;
 
-        $stmt = $conn->prepare("DELETE FROM {$this->TABLE} WHERE id=?");
+        $stmt = $conn->prepare("DELETE FROM {$this->table} WHERE id=?");
         $stmt->execute([$id]);
     }
 }
