@@ -11,10 +11,14 @@ abstract class RepositoryBase {
     protected $modelClass;
     protected array $newData  = [];
     protected $fillable;
+    protected $query;
+    protected $queryData;
+    public $queryResult;
 
     const CONDITION_KEY      = 0;
     const CONDITION_OPERATOR = 1;
     const CONDITION_VALUE    = 2;
+    const GET_FIRST          = 1;
 
     public function __construct() 
     {
@@ -64,6 +68,20 @@ abstract class RepositoryBase {
         return $stmt->fetchAll(\PDO::FETCH_CLASS, $this->modelClass);
     }
 
+    public function where($condition = [])
+    {
+        $where = "";
+
+        $where .= " {$condition[self::CONDITION_KEY]} {$condition[self::CONDITION_OPERATOR]} :{$condition[self::CONDITION_KEY]} " 
+                    . ( isset($condition[3]) ? $condition[3] : "" ) 
+                    . " ";
+
+        $this->query =  "WHERE " . $where;
+        $this->queryData[ $condition[self::CONDITION_KEY] ] = $condition[self::CONDITION_VALUE];
+
+        return $this;
+    }
+
     public function find($id)
     {
         $conn = self::$conn;
@@ -72,6 +90,38 @@ abstract class RepositoryBase {
         $stmt->execute(["id" => $id]);
 
         return $stmt->fetchObject($this->modelClass);
+    }
+
+    public function and($condition = [])
+    {
+        $andStmt = " AND {$condition[self::CONDITION_KEY]} {$condition[self::CONDITION_OPERATOR]} :{$condition[self::CONDITION_KEY]} "; 
+
+        $this->query .= $andStmt;
+        $this->queryData[$condition[self::CONDITION_KEY] ] = $condition[self::CONDITION_VALUE];
+
+        return $this;
+    }
+
+    public function get($getFirst = 0)
+    {
+        $conn = self::$conn;
+
+        echo $this->query;
+        var_dump($this->queryData);
+        $stmt = $conn->prepare("SELECT * FROM {$this->TABLE} {$this->query}");
+
+        $stmt->execute($this->queryData);
+
+        if($getFirst)
+        {
+            $this->queryResult = $stmt->fetchObject($this->modelClass);
+        }
+        else
+        {
+            $this->queryResult = $stmt->fetchAll(\PDO::FETCH_CLASS, $this->modelClass);;
+        }
+
+        return $this->queryResult;
     }
 
 
